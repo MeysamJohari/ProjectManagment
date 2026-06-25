@@ -1,0 +1,27 @@
+{
+  "name": "personal-pm-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React + Vite + Tailwind frontend for Personal PM (RTL / Persian).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@uiw/react-md-editor": "^4.0.5",
+    "lucide-react": "^0.408.0",
+    "personal-pm": "file:..",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "vite": "^5.3.4"
+  }
+}

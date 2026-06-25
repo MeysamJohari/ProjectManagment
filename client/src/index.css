@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── PM UI Kit design tokens (CSS variables for non-Tailwind contexts) ── */
+:root {
+  --pm-brand: #7c6bf0;
+  --pm-bg-app: #f4f6f9;
+  --pm-text-secondary: #6b7c93;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--pm-bg-app);
+  color: #2e3a4a;
+  font-family: 'Vazirmatn', Tahoma, system-ui, sans-serif;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* LTR islands inside RTL (file paths, timestamps) */
+.pm-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ── Scrollbar (UI Kit §10) ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Accessibility: keyboard focus ring ── */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--pm-brand);
+}
+
+/* ── Markdown editor (react-md-editor) light theme tweaks ── */
+.w-md-editor {
+  background-color: #fff !important;
+  border-radius: 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: none !important;
+  font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+}
+.w-md-editor-text-pre,
+.w-md-editor-text-input {
+  font-family: 'Vazirmatn FD', 'JetBrains Mono', monospace !important;
+  font-size: 13px !important;
+  line-height: 1.7 !important;
+}
+.w-md-editor-toolbar {
+  direction: rtl;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

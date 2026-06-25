@@ -1,0 +1,22 @@
+{
+  "name": "personal-pm-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Express API for Personal PM — reads/writes Markdown files on disk.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "gray-matter": "^4.0.3",
+    "morgan": "^1.10.0",
+    "nanoid": "^5.0.7",
+    "personal-pm": "file:..",
+    "simple-git": "^3.25.0"
+  }
+}
