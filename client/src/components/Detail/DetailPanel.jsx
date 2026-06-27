@@ -45,7 +45,19 @@ export function DetailPanel({ path }) {
     );
   }
 
-  if (loading && !item) {
+  if (loading || !item) {
+    if (error) {
+      return (
+        <Card>
+          <EmptyState
+            icon={FileText}
+            title="بارگذاری تسک ناموفق بود"
+            description={error.message}
+            action={<Button variant="secondary" onClick={reload}>تلاش دوباره</Button>}
+          />
+        </Card>
+      );
+    }
     return (
       <Card>
         <CardBody>
@@ -60,7 +72,7 @@ export function DetailPanel({ path }) {
     );
   }
 
-  if (error && !item) {
+  if (error) {
     return (
       <Card>
         <EmptyState
@@ -105,7 +117,8 @@ export function DetailPanel({ path }) {
     setConfirmDelete(false);
     try {
       await remove();
-      pushToast('success', 'تسک به سطل بازگردانی منتقل شد.');
+      useAppStore.getState().bumpTree();
+      pushToast('success', 'تسک به سطل بازیافت منتقل شد.');
       useAppStore.getState().select(null);
       useAppStore.getState().setView('projects');
     } catch (err) {
@@ -121,25 +134,25 @@ export function DetailPanel({ path }) {
           <div className="min-w-0">
             <p className="text-caption text-pm-text-tertiary pm-ltr">{path}</p>
             <h2 className="text-title-lg text-pm-text-primary">
-              {fmDraft?.title || item.frontmatter.title || item.name}
+              {fmDraft?.title || item.frontmatter?.title || item.path}
             </h2>
           </div>
           <CurrentFocusToggle path={path} isCurrent={isCurrent} />
         </div>
 
         {/* Frontmatter */}
-        <div className="mb-5">
-          <FrontmatterEditor frontmatter={item.frontmatter} onChange={handleFmChange} />
+        <div className="mb-5 rounded-pm-md border border-pm-border bg-pm-bg-subtle/40 p-4">
+          <FrontmatterEditor frontmatter={item.frontmatter || {}} onChange={handleFmChange} />
         </div>
 
         {/* Body editor */}
-        <div className="mb-5">
+        <div className="mb-5 rounded-pm-md border border-pm-border p-4">
           <p className="mb-1.5 text-label text-pm-text-secondary">بدنه (مارک‌داون)</p>
           <NoteEditor body={item.body} onChange={handleBodyChange} />
         </div>
 
         {/* Log timeline */}
-        <div className="mb-5">
+        <div className="mb-5 rounded-pm-md border border-pm-border p-4">
           <p className="mb-2 text-label text-pm-text-secondary">تاریخچه</p>
           <LogTimeline body={item.body} />
         </div>
@@ -170,8 +183,7 @@ export function DetailPanel({ path }) {
         }
       >
         <p className="text-body-sm text-pm-text-secondary">
-          این تسک به <span className="font-mono pm-ltr">data/.trash/</span> منتقل می‌شود
-          (حذف نرم) و از طریق گیت محلی قابل بازیابی است. ادامه می‌دهید؟
+          این تسک به سطل بازیافت منتقل می‌شود و پس از ۱۰ روز به‌طور دائم حذف می‌شود. ادامه می‌دهید؟
         </p>
       </Modal>
     </Card>

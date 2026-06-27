@@ -76,14 +76,12 @@ export function stripLogFromBody(body) {
 
 /** Turn a label into a safe-ish markdown filename slug (latin). */
 export function slugify(text) {
-  return (
-    String(text || '')
-      .trim()
-      .toLowerCase()
-      // remove persian/whitespace — fallback handled by caller
-      .replace(/[\u0600-\u06FF\s]+/g, '-')
-      .replace(/[^\w-]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'task'
-  );
+  const slug = String(text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\u0600-\u06FF\s]+/g, '-')
+    .replace(/[^\w-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return slug && slug !== 'task' ? slug : `task-${Date.now()}`;
 }

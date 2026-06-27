@@ -28,7 +28,7 @@ export function TopBar() {
   }, []);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-pm-border bg-pm-bg-surface px-5">
+    <header className="flex h-14 items-center justify-between rounded-b-pm-lg border-b border-pm-border bg-pm-bg-surface px-5">
       {/* Right side (RTL start): brand */}
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-pm-md bg-pm-brand-subtle text-pm-brand">

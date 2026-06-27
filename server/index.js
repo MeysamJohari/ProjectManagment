@@ -7,12 +7,14 @@ import fs from 'node:fs';
 
 import { getDataDir, ensureDir } from './lib/paths.js';
 import { ensureRepo } from './lib/backup.js';
+import { purgeOldTrash, TRASH_RETENTION_DAYS } from './lib/trash.js';
 import { authMiddleware } from './middleware/auth.js';
 import { pingRouter } from './routes/ping.js';
 import { treeRouter } from './routes/tree.js';
 import { itemRouter } from './routes/item.js';
 import { todayRouter } from './routes/today.js';
 import { currentRouter } from './routes/current.js';
+import { projectRouter } from './routes/project.js';
 
 const PORT = Number(process.env.PORT) || 4001;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
@@ -35,6 +37,23 @@ async function bootstrap() {
   }
 
   await ensureRepo();
+
+  const { purged } = await purgeOldTrash();
+  if (purged > 0) {
+    console.log(`[trash] purged ${purged} item(s) older than ${TRASH_RETENTION_DAYS} days`);
+  }
+
+  // Re-check trash daily.
+  setInterval(async () => {
+    try {
+      const result = await purgeOldTrash();
+      if (result.purged > 0) {
+        console.log(`[trash] purged ${result.purged} item(s) older than ${TRASH_RETENTION_DAYS} days`);
+      }
+    } catch (err) {
+      console.error('[trash] purge failed:', err);
+    }
+  }, 24 * 60 * 60 * 1000);
 }
 
 function seedSample(dataDir) {
@@ -101,12 +120,24 @@ app.use('/api', treeRouter);
 app.use('/api', itemRouter);
 app.use('/api', todayRouter);
 app.use('/api', currentRouter);
+app.use('/api', projectRouter);
 
 // Health + 404.
 app.get('/', (_req, res) => res.json({ name: 'personal-pm-server', ok: true }));
 app.use((req, res) => res.status(404).json({ error: 'Not found', path: req.path }));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[server] Personal PM API on http://localhost:${PORT}`);
   console.log(`[server] DATA_DIR = ${getDataDir()}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(
+      `[server] Port ${PORT} is already in use. Stop the other process or change PORT in .env.`
+    );
+    console.error(`[server] Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+    process.exit(1);
+  }
+  throw err;
 });

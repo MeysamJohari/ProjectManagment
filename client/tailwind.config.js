@@ -32,7 +32,11 @@ export default {
         },
       },
       borderRadius: {
-        pm: { sm: '6px', md: '10px', lg: '14px', xl: '18px', '2xl': '22px' },
+        'pm-sm': '6px',
+        'pm-md': '10px',
+        'pm-lg': '14px',
+        'pm-xl': '18px',
+        'pm-2xl': '22px',
       },
       boxShadow: {
         'pm-sm': '0 1px 2px rgba(16,24,40,0.05)',

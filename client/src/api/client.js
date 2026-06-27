@@ -68,4 +68,7 @@ export const api = {
   getCurrent: () => request('/current'),
   setCurrent: ({ path, stop_note }) =>
     request('/current', { method: 'PUT', body: { path, stop_note } }),
+  createProject: ({ title, parentPath }) =>
+    request('/project', { method: 'POST', body: { title, parentPath } }),
+  deleteProject: (path) => request('/project', { method: 'DELETE', query: { path } }),
 };

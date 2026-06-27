@@ -29,7 +29,7 @@ export function Sidebar({ selectedPath }) {
   };
 
   return (
-    <aside className="flex h-full w-[260px] shrink-0 flex-col border-l border-pm-border bg-pm-bg-surface">
+    <aside className="flex h-full w-[260px] shrink-0 flex-col rounded-s-pm-lg border-l border-pm-border bg-pm-bg-surface">
       {/* Section: navigation */}
       <div className="px-3 pt-4 pb-2">
         <p className="mb-1.5 px-3 text-caption text-pm-text-tertiary">فضای کار</p>
@@ -40,16 +40,10 @@ export function Sidebar({ selectedPath }) {
       </div>
 
       {/* Section: project tree */}
-      <div className="flex min-h-0 flex-1 flex-col border-t border-pm-border">
+      <div className="flex min-h-0 flex-1 flex-col rounded-pm-md border-t border-pm-border">
         <p className="px-5 pt-3 pb-1 text-caption text-pm-text-tertiary">درخت پروژه</p>
         <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-          {view === 'projects' ? (
-            <ProjectTree selectedPath={selectedPath} onSelect={select} />
-          ) : (
-            <div className="px-5 py-3 text-body-sm text-pm-text-tertiary">
-              برای مرور پروژه‌ها به بخش «پروژه‌ها» بروید.
-            </div>
-          )}
+          <ProjectTree selectedPath={selectedPath} onSelect={select} />
         </div>
       </div>
     </aside>

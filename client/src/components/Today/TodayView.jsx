@@ -63,7 +63,7 @@ export function TodayView() {
                   </p>
                 )}
               </div>
-              <Button onClick={() => open(current.path)}>باز کردن</Button>
+              <Button className="shrink-0 whitespace-nowrap" onClick={() => open(current.path)}>باز کردن</Button>
             </div>
           </CardBody>
         </Card>

@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import path from 'node:path';
 import matter from 'gray-matter';
 import { readItem, writeItem, appendToLog } from '../lib/files.js';
-import { resolveDataPath, toRelPath, ensureDir } from '../lib/paths.js';
+import { resolveDataPath, toRelPath } from '../lib/paths.js';
+import { moveToTrash } from '../lib/trash.js';
 import { statusChangeLine } from '../lib/log.js';
 import { autoCommit } from '../lib/backup.js';
 
@@ -86,16 +86,10 @@ itemRouter.delete('/item', async (req, res) => {
     const abs = resolveDataPath(relPath);
     if (!existsSync(abs)) return res.status(404).json({ error: 'Not found', path: relPath });
 
-    const dataDir = resolveDataPath('.');
-    const trashDir = path.join(dataDir, '.trash');
-    ensureDir(trashDir);
+    const moved = await moveToTrash(abs);
 
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const dest = path.join(trashDir, `${stamp}-${path.basename(abs)}`);
-    await fs.rename(abs, dest);
-
-    autoCommit(`${toRelPath(abs)} soft-deleted`);
-    res.json({ ok: true, moved: toRelPath(dest) });
+    autoCommit(`${relPath} soft-deleted`);
+    res.json({ ok: true, moved });
   } catch (err) {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[item:delete]', err);

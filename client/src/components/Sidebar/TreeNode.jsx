@@ -1,6 +1,12 @@
 import { useState } from 'react';
-import { ChevronLeft, Folder, Inbox, FileText, Plus, Star } from 'lucide-react';
+import { ChevronLeft, Folder, FolderPlus, Inbox, FileText, Plus, Star, Trash2 } from 'lucide-react';
 import { StatusBadge } from '../ui/Badge.jsx';
+
+function nodeLabel(node) {
+  if (!node) return '';
+  if (node.type === 'inbox') return 'صندوق ورودی';
+  return node.meta?.title || node.name;
+}
 
 /**
  * A single tree node. Recursive: folders render their children.
@@ -14,15 +20,26 @@ export function TreeNode({
   depth = 0,
   selectedPath,
   onSelect,
-  onCreate,
+  onCreateTask,
+  onCreateProject,
+  onDelete,
   showAdd = true,
 }) {
   const isFolder = node.type !== 'task';
-  const [open, setOpen] = useState(true);
+  const isInbox = node.type === 'inbox';
+  // Folders start collapsed by default. The inbox stays open so new inbox tasks
+  // are immediately visible; everything else opens on user click.
+  const [open, setOpen] = useState(isInbox);
   const [adding, setAdding] = useState(false);
+  const [addMode, setAddMode] = useState('task'); // 'task' | 'project'
   const [addValue, setAddValue] = useState('');
 
   const selected = node.path === selectedPath;
+  // Auto-open a folder when it (or a descendant) is the selected item, so the
+  // user always sees where they are in the tree.
+  const containsSelected =
+    selectedPath && (selectedPath === node.path || selectedPath.startsWith(`${node.path}/`));
+  const effectivelyOpen = open || containsSelected;
   const padInline = { paddingInlineStart: `${depth * 16 + 8}px` };
 
   const handleRowClick = () => {
@@ -37,17 +54,31 @@ export function TreeNode({
     e.preventDefault();
     const title = addValue.trim();
     if (!title) return;
-    // Create a task under this folder by default. Parent path is the folder's path.
-    onCreate?.({ parentPath: node.path, title });
+    if (addMode === 'project' && !isInbox) {
+      onCreateProject?.({ parentPath: node.path, title });
+    } else {
+      onCreateTask?.({ parentPath: node.path, title });
+    }
     setAddValue('');
     setAdding(false);
     setOpen(true);
   };
 
+  const openAddForm = (mode) => {
+    setAddMode(mode);
+    setAdding(true);
+    setOpen(true);
+  };
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    onDelete?.(node);
+  };
+
   return (
     <div>
       <div
-        role={isFolder ? 'treeitem' : 'treeitem'}
+        role="treeitem"
         className={`group relative flex h-8 items-center gap-1.5 rounded-pm-sm text-body-sm transition-colors ${
           selected
             ? 'bg-pm-brand-subtle text-pm-brand'
@@ -55,28 +86,25 @@ export function TreeNode({
         }`}
         style={padInline}
       >
-        {/* Selected marker on the right (RTL start) */}
         {selected && (
           <span className="absolute inset-inline-end-0 h-full w-0.5 rounded-full bg-pm-brand" />
         )}
 
-        {/* Chevron for folders */}
         {isFolder ? (
           <button
             onClick={handleRowClick}
             className="shrink-0 rounded-pm-sm p-0.5 hover:bg-pm-bg-muted"
-            aria-label={open ? 'جمع کردن' : 'باز کردن'}
+            aria-label={effectivelyOpen ? 'جمع کردن' : 'باز کردن'}
           >
             <ChevronLeft
               size={14}
-              className={`transition-transform ${open ? '-rotate-90' : ''}`}
+              className={`transition-transform ${effectivelyOpen ? '-rotate-90' : ''}`}
             />
           </button>
         ) : (
           <span className="w-5 shrink-0" />
         )}
 
-        {/* Icon + label */}
         <button
           onClick={handleRowClick}
           className="flex min-w-0 flex-1 items-center gap-1.5 text-right"
@@ -88,61 +116,89 @@ export function TreeNode({
           ) : (
             <FileText size={15} className="shrink-0 text-pm-text-tertiary" />
           )}
-          <span className="truncate">
-            {node.type === 'project' ? node.meta?.title || node.name : node.name}
-          </span>
+          <span className="truncate">{nodeLabel(node)}</span>
 
-          {/* current-focus star */}
           {node.meta?.is_current && (
             <Star size={13} className="shrink-0 fill-pm-brand text-pm-brand" />
           )}
         </button>
 
-        {/* Status badge for tasks */}
         {node.type === 'task' && node.meta?.status && (
           <StatusBadge status={node.meta.status} className="shrink-0" />
         )}
 
-        {/* "+" add button (folders + inbox) */}
-        {isFolder && showAdd && (
-          <button
-            onClick={() => setAdding((a) => !a)}
-            className="shrink-0 rounded-pm-sm p-0.5 opacity-0 transition-opacity hover:bg-pm-bg-muted group-hover:opacity-100"
-            aria-label="افزودن تسک جدید"
-          >
-            <Plus size={14} />
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          {isFolder && showAdd && (
+            <>
+              {!isInbox && (
+                <button
+                  onClick={() => openAddForm('project')}
+                  className="rounded-pm-sm p-0.5 hover:bg-pm-bg-muted"
+                  aria-label="افزودن زیرپروژه"
+                  title="زیرپروژه جدید"
+                >
+                  <FolderPlus size={14} />
+                </button>
+              )}
+              <button
+                onClick={() => openAddForm('task')}
+                className="rounded-pm-sm p-0.5 hover:bg-pm-bg-muted"
+                aria-label="افزودن تسک جدید"
+                title="تسک جدید"
+              >
+                <Plus size={14} />
+              </button>
+            </>
+          )}
+
+          {!isInbox && (
+            <button
+              onClick={handleDeleteClick}
+              className="rounded-pm-sm p-0.5 text-pm-feedback-error hover:bg-red-50"
+              aria-label={node.type === 'task' ? 'حذف تسک' : 'حذف پروژه'}
+              title={node.type === 'task' ? 'حذف تسک' : 'حذف پروژه'}
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Inline add form */}
       {adding && isFolder && (
         <form
           onSubmit={submitAdd}
-          className="mt-1 flex items-center gap-1.5"
-          style={{ paddingInlineStart: `${(depth + 1) * 16 + 8}px` }}
+          className="mt-1 space-y-1.5 rounded-pm-md border border-pm-border bg-pm-bg-muted p-2"
+          style={{ marginInlineStart: `${(depth + 1) * 16 + 8}px` }}
         >
-          <FileText size={14} className="text-pm-text-tertiary" />
-          <input
-            autoFocus
-            value={addValue}
-            onChange={(e) => setAddValue(e.target.value)}
-            onBlur={() => !addValue && setAdding(false)}
-            placeholder="عنوان تسک…"
-            className="h-7 flex-1 rounded-pm-sm border border-pm-border bg-white px-2 text-body-sm focus:border-pm-border-focus focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={!addValue.trim()}
-            className="rounded-pm-sm bg-pm-brand px-2 py-1 text-caption text-white disabled:opacity-40"
-          >
-            افزودن
-          </button>
+          <p className="text-caption text-pm-text-tertiary">
+            {addMode === 'project' ? 'زیرپروژه جدید' : 'تسک جدید'}
+          </p>
+          <div className="flex items-center gap-1.5">
+            {addMode === 'project' ? (
+              <FolderPlus size={14} className="text-pm-text-tertiary" />
+            ) : (
+              <FileText size={14} className="text-pm-text-tertiary" />
+            )}
+            <input
+              autoFocus
+              value={addValue}
+              onChange={(e) => setAddValue(e.target.value)}
+              onBlur={() => !addValue && setAdding(false)}
+              placeholder={addMode === 'project' ? 'نام زیرپروژه…' : 'عنوان تسک…'}
+              className="h-7 flex-1 rounded-pm-sm border border-pm-border bg-white px-2 text-body-sm focus:border-pm-border-focus focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!addValue.trim()}
+              className="rounded-pm-sm bg-pm-brand px-2 py-1 text-caption text-white disabled:opacity-40"
+            >
+              افزودن
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Children */}
-      {isFolder && open && node.children?.length > 0 && (
+      {isFolder && effectivelyOpen && node.children?.length > 0 && (
         <div>
           {node.children.map((child) => (
             <TreeNode
@@ -151,7 +207,9 @@ export function TreeNode({
               depth={depth + 1}
               selectedPath={selectedPath}
               onSelect={onSelect}
-              onCreate={onCreate}
+              onCreateTask={onCreateTask}
+              onCreateProject={onCreateProject}
+              onDelete={onDelete}
               showAdd={showAdd}
             />
           ))}

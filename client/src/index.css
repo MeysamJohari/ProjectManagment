@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  button,
+  input,
+  select,
+  textarea,
+  fieldset {
+    border-radius: 10px;
+  }
+}
+
 /* ── PM UI Kit design tokens (CSS variables for non-Tailwind contexts) ── */
 :root {
   --pm-brand: #7c6bf0;

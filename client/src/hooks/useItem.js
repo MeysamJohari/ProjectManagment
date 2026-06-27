@@ -7,7 +7,7 @@ import { api, ApiError } from '../api/client.js';
  */
 export function useItem(path) {
   const [item, setItem] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!!path);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {

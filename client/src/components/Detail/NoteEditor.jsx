@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import MDEditor from '@uiw/react-md-editor';
+import '@uiw/react-md-editor/markdown-editor.css';
 import { stripLogFromBody } from '../../lib/format.js';
 
 /**

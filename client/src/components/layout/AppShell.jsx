@@ -15,7 +15,7 @@ export function AppShell({ selectedPath, children }) {
         <Sidebar selectedPath={selectedPath} />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <div className="mx-auto w-full max-w-content flex-1 overflow-y-auto px-6 py-5">
+          <div className="mx-auto w-full max-w-content flex-1 overflow-y-auto rounded-pm-lg px-6 py-5">
             <div className="mb-4">
               <CurrentBanner />
             </div>

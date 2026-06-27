@@ -11,8 +11,10 @@ export const useAppStore = create((set) => ({
   selectedPath: null, // currently open item in the detail panel
   current: null, // { path, frontmatter } | null — the is_current task
   toasts: [], // [{ id, type, message }]
+  treeVersion: 0,
   setView: (view) => set({ view }),
-  select: (path) => set({ view: 'projects', selectedPath: path }),
+  select: (path) =>
+    set(path ? { view: 'projects', selectedPath: path } : { selectedPath: null }),
   setCurrent: (current) => set({ current }),
   pushToast: (type, message) => {
     const id = Math.random().toString(36).slice(2);
@@ -22,4 +24,5 @@ export const useAppStore = create((set) => ({
     }, 3500);
   },
   dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  bumpTree: () => set((s) => ({ treeVersion: s.treeVersion + 1 })),
 }));
