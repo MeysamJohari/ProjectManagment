@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import { existsSync } from 'node:fs';
+import path from 'node:path';
 import matter from 'gray-matter';
 import { readItem, writeItem, appendToLog } from '../lib/files.js';
 import { resolveDataPath, toRelPath } from '../lib/paths.js';
@@ -94,5 +96,48 @@ itemRouter.delete('/item', async (req, res) => {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[item:delete]', err);
     res.status(500).json({ error: 'Failed to delete item', message: err.message });
+  }
+});
+
+// ── POST /api/move ─────────────────────────────────────────────────────
+// Move a task file from one folder to another.
+itemRouter.post('/move', async (req, res) => {
+  const { from, to } = req.body || {};
+  if (!from || !to) return res.status(400).json({ error: 'Missing "from" or "to" in body' });
+
+  try {
+    const srcAbs = resolveDataPath(from);
+    const destDirAbs = resolveDataPath(to);
+
+    if (!existsSync(srcAbs)) return res.status(404).json({ error: 'Source not found', path: from });
+
+    // Prevent moving non-task files (dotfiles, _project.md, etc.)
+    const srcName = path.basename(srcAbs);
+    if (srcName.startsWith('.') || srcName === '_project.md') {
+      return res.status(400).json({ error: 'Cannot move this file' });
+    }
+
+    // Ensure destination directory exists.
+    fsSync.mkdirSync(destDirAbs, { recursive: true });
+
+    // If a file with the same name exists in dest, add a timestamp suffix.
+    let destAbs = path.join(destDirAbs, srcName);
+    if (existsSync(destAbs) && srcAbs !== destAbs) {
+      const ext = path.extname(srcName);
+      const base = path.basename(srcName, ext);
+      destAbs = path.join(destDirAbs, `${base}-${Date.now()}${ext}`);
+    }
+
+    // Final check: destination must still be inside DATA_DIR.
+    // destAbs is derived from destDirAbs (already resolved safe) + basename, so it's safe.
+
+    await fs.rename(srcAbs, destAbs);
+
+    autoCommit(`moved ${from} → ${toRelPath(destAbs)}`);
+    res.json({ ok: true, newPath: toRelPath(destAbs) });
+  } catch (err) {
+    if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
+    console.error('[item:move]', err);
+    res.status(500).json({ error: 'Failed to move item', message: err.message });
   }
 });

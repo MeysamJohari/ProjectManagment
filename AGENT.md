@@ -74,7 +74,7 @@ ProjectManagment/
 │   └── routes/
 │       ├── ping.js             ✅ GET /api/ping
 │       ├── tree.js             ✅ GET /api/tree
-│       ├── item.js             ✅ GET|POST|DELETE /api/item (status Log + is_current rejection + soft-delete)
+│       ├── item.js             ✅ GET|POST|DELETE /api/item + POST /api/move (status Log + is_current rejection + soft-delete + move)
 │       ├── today.js            ✅ GET /api/today
 │       └── current.js          ✅ GET|PUT /api/current (stop_note rule)
 │
@@ -88,7 +88,7 @@ ProjectManagment/
         ├── main.jsx            ✅
         ├── App.jsx             ⬜ مهم‌ترین فایل باقی‌مانده
         ├── index.css           ✅ tokens + scrollbar + RTL + react-md-editor tweaks
-        ├── api/client.js       ✅ request + ApiError + api.{ping,getTree,getItem,createItem,deleteItem,getToday,getCurrent,setCurrent}
+        ├── api/client.js       ✅ request + ApiError + api.{ping,getTree,getItem,createItem,deleteItem,rename,moveItem,getToday,getCurrent,setCurrent}
         ├── lib/
         │   ├── constants.js    ✅ STATUS/PRIORITY (label + کلاس‌های Tailwind) + OPTIONS + STOP_NOTE_MIN + VIEWS
         │   └── format.js       ✅ toFa / formatDateTime / formatTime / parseLogLine / parseLogFromBody / stripLogFromBody / slugify
@@ -102,7 +102,7 @@ ProjectManagment/
         ├── components/
         │   ├── ui/             ✅ Button, Card, Badge, Input(Field/Input/Textarea/Select), Modal, Toast(ToastHost), Feedback(Skeleton/Spinner/EmptyState)
         │   ├── layout/         🟡 CurrentBanner ✅ — AppShell ⬜ — Sidebar ⬜ — TopBar ⬜
-        │   ├── Sidebar/        ⬜ ProjectTree.jsx + TreeNode.jsx
+        │   ├── Sidebar/        ✅ ProjectTree.jsx + TreeNode.jsx (rename + drag-and-drop)
         │   ├── Detail/         ⬜ DetailPanel + FrontmatterEditor + NoteEditor + CurrentFocusToggle + PauseNoteModal + LogTimeline
         │   └── Today/          ⬜ TodayView.jsx
 ```
@@ -279,3 +279,10 @@ due_date: "YYYY-MM-DD"         # Phase 3
 - **فولدرها به‌صورت پیش‌فرض بسته‌اند (`useState(isInbox)`)** به‌جای باز. فقط `_inbox` باز می‌ماند. علاوه بر این، فولدرِ خودِ آیتم انتخاب‌شده (و زنجیره‌ی والدش) خودکار باز می‌ماند (`effectivelyOpen = open || containsSelected`). علت کامل در `KNOWN_ISSUES.md` مورد #2.
 - **ثابت `INBOX_PATH = '_inbox'`** در `ProjectTree.jsx` تعریف شد تا رشته‌ی جادویی تکرار نشود؛ `handleCreateTask` در نبود `parentPath` به inbox برمی‌گردد.
 - **دکمه‌های تعاملی در flex باید `shrink-0 whitespace-nowrap` بگیرند** تا فشرده/دوخطی نشوند (قانون A در `KNOWN_ISSUES.md`؛ مورد #3 نمونه‌ی آن در `TodayView`).
+
+### تصمیمات ثبت‌شده در session ۳ (۲۰۲۶-۰۶-۲۸): rename + DnD + رفع باگ seed
+
+- **رفع باگ seed (#4):** شرط `hasAny` به جای ریشه‌ی `data/`، زیرپوشه‌ی `data/_inbox/` را اسکن می‌کند + محافظ `existsSync` قبل از نوشتن فایل نمونه. علت کامل در `KNOWN_ISSUES.md` مورد #4.
+- **Rename = فقط تغییر `title` در frontmatter** (نه تغییر نام فایل/فولدر). این روش ایمن است چون path ثابت می‌ماند و `selectedPath`/`current` خراب نمی‌شود. برای پروژه‌ها، فایل `_project.md` در مسیر پروژه ویرایش می‌شود.
+- **Drag-and-drop فقط برای task → folder** (نه folder → folder). از HTML5 DnD API بومی استفاده شده بدون کتابخانه. تسک‌ها `draggable`، فولدرها `drop target`. اگر فایل هم‌نام در مقصد وجود داشت، suffix `-timestamp` اضافه می‌شود.
+- **Endpoint جدید `POST /api/move`:** دریافت `{ from, to }` (هر دو relative path)، انتقال با `fs.rename`، autoCommit بعد از انتقال.

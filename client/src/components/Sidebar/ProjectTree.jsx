@@ -97,6 +97,31 @@ export function ProjectTree({ selectedPath, onSelect }) {
     }
   };
 
+  const handleRename = async ({ node, title }) => {
+    const isProject = node.type === 'project';
+    try {
+      await api.rename({ path: node.path, title, isProject });
+      pushToast('success', 'نام تغییر کرد.');
+      bumpTree();
+    } catch (err) {
+      pushToast('error', err.message || 'تغییر نام ناموفق بود.');
+    }
+  };
+
+  const handleMove = async ({ from, to }) => {
+    try {
+      const result = await api.moveItem({ from, to });
+      // If the moved item was selected, update selectedPath to the new location.
+      if (selectedPath === from) {
+        select(result.newPath);
+      }
+      bumpTree();
+      pushToast('success', 'آیتم منتقل شد.');
+    } catch (err) {
+      pushToast('error', err.message || 'انتقال ناموفق بود.');
+    }
+  };
+
   const submitRootProject = async (e) => {
     e.preventDefault();
     const title = projectTitle.trim();
@@ -247,6 +272,8 @@ export function ProjectTree({ selectedPath, onSelect }) {
               onCreateTask={handleCreateTask}
               onCreateProject={handleCreateProject}
               onDelete={handleDeleteRequest}
+              onRename={handleRename}
+              onMove={handleMove}
             />
           ))}
         </div>

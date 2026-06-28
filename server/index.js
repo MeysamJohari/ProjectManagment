@@ -25,13 +25,12 @@ async function bootstrap() {
   ensureDir(dataDir);
   ensureDir(path.join(dataDir, '_inbox'));
 
-  // Seed a couple of example files on the very first run (no files yet at all).
-  const hasAny =
-    fs.existsSync(dataDir) &&
-    fs
-      .readdirSync(dataDir, { withFileTypes: true })
-      .some((e) => e.isFile() && e.name.endsWith('.md'));
-  if (!hasAny) {
+  // Seed a couple of example files on the very first run (inbox is empty).
+  const inboxDir = path.join(dataDir, '_inbox');
+  const inboxHasFiles =
+    fs.existsSync(inboxDir) &&
+    fs.readdirSync(inboxDir, { withFileTypes: true }).some((e) => e.isFile());
+  if (!inboxHasFiles) {
     seedSample(dataDir);
     console.log('[startup] seeded sample tasks into _inbox/');
   }
@@ -96,8 +95,10 @@ last_note: "تسک‌های بدون پروژه در _inbox قرار می‌گی
 ## Log
 `;
 
-  fs.writeFileSync(path.join(inbox, 'welcome-personal-pm.md'), sample1, 'utf8');
-  fs.writeFileSync(path.join(inbox, 'task-renew-car-insurance.md'), sample2, 'utf8');
+  const f1 = path.join(inbox, 'welcome-personal-pm.md');
+  const f2 = path.join(inbox, 'task-renew-car-insurance.md');
+  if (!fs.existsSync(f1)) fs.writeFileSync(f1, sample1, 'utf8');
+  if (!fs.existsSync(f2)) fs.writeFileSync(f2, sample2, 'utf8');
 }
 
 // ── Express app ─────────────────────────────────────────────────────────

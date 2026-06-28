@@ -71,4 +71,9 @@ export const api = {
   createProject: ({ title, parentPath }) =>
     request('/project', { method: 'POST', body: { title, parentPath } }),
   deleteProject: (path) => request('/project', { method: 'DELETE', query: { path } }),
+  rename: ({ path, title, isProject }) => {
+    const itemPath = isProject ? `${path.replace(/\/$/, '')}/_project.md` : path;
+    return request('/item', { method: 'POST', body: { path: itemPath, frontmatter: { title } } });
+  },
+  moveItem: ({ from, to }) => request('/move', { method: 'POST', body: { from, to } }),
 };

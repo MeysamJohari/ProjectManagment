@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, Folder, FolderPlus, Inbox, FileText, Plus, Star, Trash2 } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ChevronLeft, Folder, FolderPlus, Inbox, FileText, Plus, Star, Trash2, Pencil } from 'lucide-react';
 import { StatusBadge } from '../ui/Badge.jsx';
 
 function nodeLabel(node) {
@@ -23,16 +23,20 @@ export function TreeNode({
   onCreateTask,
   onCreateProject,
   onDelete,
+  onRename,
+  onMove,
   showAdd = true,
 }) {
   const isFolder = node.type !== 'task';
   const isInbox = node.type === 'inbox';
-  // Folders start collapsed by default. The inbox stays open so new inbox tasks
-  // are immediately visible; everything else opens on user click.
   const [open, setOpen] = useState(isInbox);
   const [adding, setAdding] = useState(false);
-  const [addMode, setAddMode] = useState('task'); // 'task' | 'project'
+  const [addMode, setAddMode] = useState('task');
   const [addValue, setAddValue] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const editRef = useRef(null);
 
   const selected = node.path === selectedPath;
   // Auto-open a folder when it (or a descendant) is the selected item, so the
@@ -75,6 +79,48 @@ export function TreeNode({
     onDelete?.(node);
   };
 
+  const startRename = (e) => {
+    e.stopPropagation();
+    setEditValue(node.meta?.title || node.name);
+    setEditing(true);
+    setTimeout(() => editRef.current?.focus(), 0);
+  };
+
+  const submitRename = () => {
+    const title = editValue.trim();
+    if (title && title !== (node.meta?.title || node.name)) {
+      onRename?.({ node, title });
+    }
+    setEditing(false);
+  };
+
+  const cancelRename = () => setEditing(false);
+
+  const handleDragStart = (e) => {
+    if (isFolder) return;
+    e.dataTransfer.setData('text/plain', node.path);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    if (!isFolder) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (!isFolder) return;
+    const fromPath = e.dataTransfer.getData('text/plain');
+    if (fromPath && fromPath !== node.path) {
+      onMove?.({ from: fromPath, to: node.path });
+    }
+  };
+
   return (
     <div>
       <div
@@ -82,9 +128,16 @@ export function TreeNode({
         className={`group relative flex h-8 items-center gap-1.5 rounded-pm-sm text-body-sm transition-colors ${
           selected
             ? 'bg-pm-brand-subtle text-pm-brand'
-            : 'text-pm-text-secondary hover:bg-pm-bg-subtle hover:text-pm-text-primary'
+            : dragOver
+              ? 'bg-pm-brand/10 ring-1 ring-pm-brand/30'
+              : 'text-pm-text-secondary hover:bg-pm-bg-subtle hover:text-pm-text-primary'
         }`}
         style={padInline}
+        draggable={!isFolder}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {selected && (
           <span className="absolute inset-inline-end-0 h-full w-0.5 rounded-full bg-pm-brand" />
@@ -116,7 +169,22 @@ export function TreeNode({
           ) : (
             <FileText size={15} className="shrink-0 text-pm-text-tertiary" />
           )}
-          <span className="truncate">{nodeLabel(node)}</span>
+          {editing ? (
+            <input
+              ref={editRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitRename();
+                if (e.key === 'Escape') cancelRename();
+              }}
+              onBlur={submitRename}
+              onClick={(e) => e.stopPropagation()}
+              className="min-w-0 flex-1 rounded-pm-sm border border-pm-border-focus bg-white px-1 py-0 text-body-sm focus:outline-none"
+            />
+          ) : (
+            <span className="truncate">{nodeLabel(node)}</span>
+          )}
 
           {node.meta?.is_current && (
             <Star size={13} className="shrink-0 fill-pm-brand text-pm-brand" />
@@ -149,6 +217,17 @@ export function TreeNode({
                 <Plus size={14} />
               </button>
             </>
+          )}
+
+          {!isInbox && !editing && (
+            <button
+              onClick={startRename}
+              className="rounded-pm-sm p-0.5 hover:bg-pm-bg-muted"
+              aria-label="تغییر نام"
+              title="تغییر نام"
+            >
+              <Pencil size={14} />
+            </button>
           )}
 
           {!isInbox && (
@@ -210,6 +289,8 @@ export function TreeNode({
               onCreateTask={onCreateTask}
               onCreateProject={onCreateProject}
               onDelete={onDelete}
+              onRename={onRename}
+              onMove={onMove}
               showAdd={showAdd}
             />
           ))}
