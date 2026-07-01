@@ -388,6 +388,7 @@ export default {
 ```
 input/select: h-9 px-3 rounded-pm-md border border-pm-border
 textarea: min-h-[80px] px-3 py-2
+AutoResizeTextarea (last_note): resize-none overflow-hidden — ارتفاع با scrollHeight
 focus: border-pm-brand ring-2 ring-pm-brand/20
 label: text-label text-secondary mb-1.5
 ```
@@ -406,6 +407,20 @@ label: text-label text-secondary mb-1.5
 - ارتفاع ردیف: ۳۲px
 - انتخاب: `bg-brand-subtle border-r-2 border-pm-brand`
 - دکمه +: در سمت چپ ردیف (ابتدای LTR در RTL)
+- **Drag-and-drop:**
+  - تسک‌ها و فولدرهای پروژه `draggable` (inbox نه)
+  - Drop تسک روی فولدر → انتقال (`POST /api/move`)
+  - Drop فولدر روی فولدر هم‌سطح → تغییر ترتیب (`POST /api/reorder`)
+  - حالت drag-over: `bg-pm-brand/10 ring-1 ring-pm-brand/30`
+  - `_inbox` همیشه اول؛ قابل جابجایی نیست
+
+### ۵.۷.۱ Markdown Editor (بدنه تسک)
+
+- کتابخانه: `@uiw/react-md-editor` + `@uiw/react-markdown-preview/markdown.css`
+- wrapper: `.pm-markdown-editor`
+- حالت: preview زنده (`preview="live"`)، RTL، ارتفاع ~420px
+- تایپوگرافی فارسی: Vazirmatn، line-height 2، فاصله paragraph/list/blockquote
+- بخش `## Log` در ادیتور نمایش داده نمی‌شود (server-managed)
 
 ### ۵.۸ Timeline (لاگ)
 

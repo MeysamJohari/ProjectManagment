@@ -15,6 +15,11 @@ export function focusStopLine(note) {
   return `focus: stopped | "${safe}"`;
 }
 
+export function noteLine(text) {
+  const safe = String(text ?? '').replace(/"/g, "'");
+  return `note: "${safe}"`;
+}
+
 /**
  * Parse a single Log line into a structured event.
  * Examples it handles:
@@ -44,6 +49,9 @@ export function parseLogLine(rawLine) {
   if ((m = rest.match(/^focus:\s*stopped\s*\|\s*"(.*)"$/))) {
     return { timestamp, kind: 'focus', action: 'stopped', note: m[1] };
   }
+  if ((m = rest.match(/^note:\s*"(.*)"$/))) {
+    return { timestamp, kind: 'note', text: m[1] };
+  }
   // Fallback: keep the raw text so nothing is lost.
   return { timestamp, kind: 'unknown', text: rest };
 }
@@ -51,10 +59,24 @@ export function parseLogLine(rawLine) {
 /** Extract the `## Log` block from a body string and return parsed events. */
 export function parseLogFromBody(body) {
   if (!body) return [];
-  const m = body.match(/^##\s+Log\b[^\n]*\n([\s\S]*?)(?=\n##\s|$)/m);
-  if (!m) return [];
-  return m[1]
-    .split('\n')
-    .map(parseLogLine)
-    .filter(Boolean);
+  const range = findLogSectionRange(body);
+  if (!range) return [];
+  const raw = body.slice(range.contentStart, range.end);
+  return raw.split('\n').map(parseLogLine).filter(Boolean);
+}
+
+function findLogSectionRange(body) {
+  if (!body) return null;
+  const headingRe = /^##\s+Log\b[^\n]*$/m;
+  const match = headingRe.exec(body);
+  if (!match) return null;
+
+  const start = match.index;
+  let contentStart = start + match[0].length;
+  if (body[contentStart] === '\n') contentStart += 1;
+
+  const rest = body.slice(contentStart);
+  const nextHeading = rest.search(/^##\s+/m);
+  const end = nextHeading === -1 ? body.length : contentStart + nextHeading;
+  return { start, contentStart, end };
 }

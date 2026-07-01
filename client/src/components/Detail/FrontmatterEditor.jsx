@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Field, Input, Select, Textarea } from '../ui/Input.jsx';
+import { Field, Input, Select, AutoResizeTextarea } from '../ui/Input.jsx';
 import { STATUS_OPTIONS, PRIORITY_OPTIONS } from '../../lib/constants.js';
 
 /**
@@ -51,7 +51,7 @@ export function FrontmatterEditor({ frontmatter, onChange }) {
       </Field>
 
       <Field label="یادداشت زمینه" className="md:col-span-2" hint="زمینه‌ی کوتاه برای جلسه‌ی بعدی کار">
-        <Textarea
+        <AutoResizeTextarea
           value={draft.last_note || ''}
           onChange={(e) => update({ last_note: e.target.value })}
           placeholder="مثلاً: منتظر بررسی طراحی"

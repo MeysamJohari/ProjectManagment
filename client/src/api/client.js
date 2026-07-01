@@ -63,6 +63,8 @@ export const api = {
   getItem: (path) => request('/item', { query: { path } }),
   createItem: ({ path, frontmatter, body }) =>
     request('/item', { method: 'POST', body: { path, frontmatter, body } }),
+  appendLogNote: ({ path, text }) =>
+    request('/item/log', { method: 'POST', body: { path, text } }),
   deleteItem: (path) => request('/item', { method: 'DELETE', query: { path } }),
   getToday: () => request('/today'),
   getCurrent: () => request('/current'),
@@ -76,4 +78,6 @@ export const api = {
     return request('/item', { method: 'POST', body: { path: itemPath, frontmatter: { title } } });
   },
   moveItem: ({ from, to }) => request('/move', { method: 'POST', body: { from, to } }),
+  reorderFolders: ({ parentPath, orderedPaths }) =>
+    request('/reorder', { method: 'POST', body: { parentPath, orderedPaths } }),
 };

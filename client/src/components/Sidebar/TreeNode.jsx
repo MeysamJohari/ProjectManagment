@@ -2,6 +2,25 @@ import { useState, useRef } from 'react';
 import { ChevronLeft, Folder, FolderPlus, Inbox, FileText, Plus, Star, Trash2, Pencil } from 'lucide-react';
 import { StatusBadge } from '../ui/Badge.jsx';
 
+const DRAG_MIME = 'application/x-pm-item';
+
+function packDragPayload(kind, path, parentPath) {
+  return JSON.stringify({ kind, path, parentPath: parentPath ?? '' });
+}
+
+function parseDragPayload(e) {
+  const raw = e.dataTransfer.getData(DRAG_MIME) || e.dataTransfer.getData('text/plain');
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.kind && parsed?.path) return parsed;
+  } catch {
+    /* plain path fallback */
+  }
+  if (raw && !raw.startsWith('{')) return { kind: 'task', path: raw, parentPath: '' };
+  return null;
+}
+
 function nodeLabel(node) {
   if (!node) return '';
   if (node.type === 'inbox') return 'صندوق ورودی';
@@ -14,10 +33,13 @@ function nodeLabel(node) {
  *  - chevron points LEFT and opens leftward
  *  - selected row: border-r-2 border-pm-brand bg-pm-brand-subtle (border on the RIGHT/start side)
  *  - "+" button sits on the far end (start of the LTR reading = right in RTL)
+ * DnD: tasks → folder (move); project folders → sibling folder (reorder).
  */
 export function TreeNode({
   node,
   depth = 0,
+  parentPath = '',
+  siblingFolders = [],
   selectedPath,
   onSelect,
   onCreateTask,
@@ -25,10 +47,12 @@ export function TreeNode({
   onDelete,
   onRename,
   onMove,
+  onReorderFolder,
   showAdd = true,
 }) {
   const isFolder = node.type !== 'task';
   const isInbox = node.type === 'inbox';
+  const isProject = node.type === 'project';
   const [open, setOpen] = useState(isInbox);
   const [adding, setAdding] = useState(false);
   const [addMode, setAddMode] = useState('task');
@@ -39,12 +63,11 @@ export function TreeNode({
   const editRef = useRef(null);
 
   const selected = node.path === selectedPath;
-  // Auto-open a folder when it (or a descendant) is the selected item, so the
-  // user always sees where they are in the tree.
   const containsSelected =
     selectedPath && (selectedPath === node.path || selectedPath.startsWith(`${node.path}/`));
   const effectivelyOpen = open || containsSelected;
   const padInline = { paddingInlineStart: `${depth * 16 + 8}px` };
+  const draggable = !isInbox;
 
   const handleRowClick = () => {
     if (isFolder) {
@@ -97,7 +120,9 @@ export function TreeNode({
   const cancelRename = () => setEditing(false);
 
   const handleDragStart = (e) => {
-    if (isFolder) return;
+    if (!draggable) return;
+    const kind = isProject ? 'folder' : 'task';
+    e.dataTransfer.setData(DRAG_MIME, packDragPayload(kind, node.path, parentPath));
     e.dataTransfer.setData('text/plain', node.path);
     e.dataTransfer.effectAllowed = 'move';
   };
@@ -115,11 +140,33 @@ export function TreeNode({
     e.preventDefault();
     setDragOver(false);
     if (!isFolder) return;
-    const fromPath = e.dataTransfer.getData('text/plain');
-    if (fromPath && fromPath !== node.path) {
-      onMove?.({ from: fromPath, to: node.path });
+
+    const payload = parseDragPayload(e);
+    if (!payload) return;
+
+    if (payload.kind === 'folder') {
+      if (isInbox || !isProject) return;
+      if (payload.path === node.path) return;
+      if (payload.parentPath !== parentPath) return;
+
+      const ordered = [...siblingFolders];
+      const fromIdx = ordered.indexOf(payload.path);
+      const toIdx = ordered.indexOf(node.path);
+      if (fromIdx === -1 || toIdx === -1) return;
+
+      ordered.splice(fromIdx, 1);
+      ordered.splice(toIdx, 0, payload.path);
+      onReorderFolder?.({ parentPath, orderedPaths: ordered });
+      return;
+    }
+
+    if (payload.kind === 'task' && payload.path !== node.path) {
+      onMove?.({ from: payload.path, to: node.path });
     }
   };
+
+  const childFolders =
+    node.children?.filter((c) => c.type === 'project').map((c) => c.path) ?? [];
 
   return (
     <div>
@@ -133,7 +180,7 @@ export function TreeNode({
               : 'text-pm-text-secondary hover:bg-pm-bg-subtle hover:text-pm-text-primary'
         }`}
         style={padInline}
-        draggable={!isFolder}
+        draggable={draggable}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -284,6 +331,8 @@ export function TreeNode({
               key={child.path}
               node={child}
               depth={depth + 1}
+              parentPath={node.path}
+              siblingFolders={childFolders}
               selectedPath={selectedPath}
               onSelect={onSelect}
               onCreateTask={onCreateTask}
@@ -291,6 +340,7 @@ export function TreeNode({
               onDelete={onDelete}
               onRename={onRename}
               onMove={onMove}
+              onReorderFolder={onReorderFolder}
               showAdd={showAdd}
             />
           ))}

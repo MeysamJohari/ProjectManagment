@@ -64,21 +64,132 @@ body {
 }
 
 /* ── Markdown editor (react-md-editor) light theme tweaks ── */
-.w-md-editor {
+.pm-markdown-editor .w-md-editor {
   background-color: #fff !important;
   border-radius: 10px !important;
   border: 1px solid #e2e8f0 !important;
   box-shadow: none !important;
   font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+  overflow: hidden;
 }
-.w-md-editor-text-pre,
-.w-md-editor-text-input {
-  font-family: 'Vazirmatn FD', 'JetBrains Mono', monospace !important;
-  font-size: 13px !important;
-  line-height: 1.7 !important;
-}
-.w-md-editor-toolbar {
+
+.pm-markdown-editor .w-md-editor-toolbar {
   direction: rtl;
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 4px 8px !important;
+}
+
+.pm-markdown-editor .w-md-editor-content {
+  direction: rtl;
+}
+
+.pm-markdown-editor .w-md-editor-text-pre,
+.pm-markdown-editor .w-md-editor-text-input,
+.pm-markdown-editor .w-md-editor-text {
+  direction: rtl !important;
+  text-align: right !important;
+  font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+  font-size: 15px !important;
+  line-height: 2 !important;
+  letter-spacing: 0 !important;
+  word-spacing: 0.05em;
+}
+
+.pm-markdown-editor .w-md-editor-text-input {
+  padding: 16px 18px !important;
+}
+
+.pm-markdown-editor .w-md-editor-preview,
+.pm-markdown-editor .pm-markdown-preview {
+  direction: rtl;
+  text-align: right;
+  padding: 16px 18px !important;
+  background: #fafbfc !important;
+}
+
+/* Persian-friendly rendered markdown */
+.pm-markdown-editor .wmde-markdown {
+  direction: rtl;
+  text-align: right;
+  font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+  font-size: 15px !important;
+  line-height: 2 !important;
+  color: #2e3a4a;
+  word-break: break-word;
+}
+
+.pm-markdown-editor .wmde-markdown > :first-child {
+  margin-top: 0 !important;
+}
+
+.pm-markdown-editor .wmde-markdown p {
+  margin: 0 0 1em;
+}
+
+.pm-markdown-editor .wmde-markdown h1,
+.pm-markdown-editor .wmde-markdown h2,
+.pm-markdown-editor .wmde-markdown h3,
+.pm-markdown-editor .wmde-markdown h4 {
+  margin: 1.25em 0 0.65em;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
+.pm-markdown-editor .wmde-markdown h1 { font-size: 1.35em; }
+.pm-markdown-editor .wmde-markdown h2 { font-size: 1.2em; }
+.pm-markdown-editor .wmde-markdown h3 { font-size: 1.08em; }
+
+.pm-markdown-editor .wmde-markdown ul,
+.pm-markdown-editor .wmde-markdown ol {
+  margin: 0 0 1em;
+  padding: 0 1.5em 0 0;
+}
+
+.pm-markdown-editor .wmde-markdown li {
+  margin-bottom: 0.4em;
+}
+
+.pm-markdown-editor .wmde-markdown li + li {
+  margin-top: 0.25em;
+}
+
+.pm-markdown-editor .wmde-markdown blockquote {
+  margin: 0 0 1em;
+  padding: 0.5em 1em;
+  border-right: 3px solid #7c6bf0;
+  border-left: none;
+  background: #f5f3ff;
+  color: #475569;
+}
+
+.pm-markdown-editor .wmde-markdown code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.9em;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.pm-markdown-editor .wmde-markdown pre {
+  direction: ltr;
+  text-align: left;
+  margin: 0 0 1em;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #1e293b !important;
+}
+
+.pm-markdown-editor .wmde-markdown hr {
+  margin: 1.25em 0;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+}
+
+.pm-markdown-editor .wmde-markdown a {
+  color: #7c6bf0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Block commits that change app code without updating project memory docs.
+# Enable once: git config core.hooksPath .githooks
+
+STAGED=$(git diff --cached --name-only)
+
+code_changed=0
+docs_changed=0
+
+for f in $STAGED; do
+  case "$f" in
+    client/*|server/*)
+      code_changed=1
+      ;;
+    AGENT.md|KNOWN_ISSUES.md)
+      docs_changed=1
+      ;;
+  esac
+done
+
+if [ "$code_changed" = 1 ] && [ "$docs_changed" = 0 ]; then
+  echo ""
+  echo "pre-commit: کد در client/ یا server/ تغییر کرده ولی AGENT.md / KNOWN_ISSUES.md آپدیت نشده."
+  echo "  → فایل‌های حافظه پروژه را در همین commit به‌روز کن."
+  echo "  → یا در موارد اضطراری: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+exit 0

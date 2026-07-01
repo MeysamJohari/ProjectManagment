@@ -2,18 +2,38 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { getDataDir, toRelPath } from './paths.js';
+import { readTreeOrder } from './treeOrder.js';
 
 const HIDDEN = new Set(['.trash', 'node_modules', '.git']);
 const PROJECT_FILE = '_project.md';
+const INBOX_NAME = '_inbox';
 
 /** Recursively scan DATA_DIR and build the project tree (including _inbox). */
 export async function buildTree() {
   const dataDir = getDataDir();
-  const children = await scanDir(dataDir);
+  const order = await readTreeOrder();
+  const children = await scanDir(dataDir, order, '');
   return { tree: children };
 }
 
-async function scanDir(dirAbs) {
+function sortFolderNodes(nodes, parentKey, order) {
+  const orderedNames = order[parentKey];
+  if (!orderedNames?.length) {
+    nodes.sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+    return nodes;
+  }
+
+  return nodes.sort((a, b) => {
+    const ai = orderedNames.indexOf(a.name);
+    const bi = orderedNames.indexOf(b.name);
+    if (ai === -1 && bi === -1) return a.name.localeCompare(b.name, 'en', { numeric: true });
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
+async function scanDir(dirAbs, order, parentKey) {
   let entries;
   try {
     entries = await fs.readdir(dirAbs, { withFileTypes: true });
@@ -28,6 +48,7 @@ async function scanDir(dirAbs) {
   });
 
   const nodes = [];
+  const folderNodes = [];
   for (const entry of entries) {
     if (entry.name.startsWith('.')) {
       // allow _inbox etc., but skip dotfiles/dotdirs (.trash, .git)
@@ -38,16 +59,22 @@ async function scanDir(dirAbs) {
 
     if (entry.isDirectory()) {
       // The _inbox folder is a special top-level "inbox" node.
-      const isInbox = abs === path.join(getDataDir(), '_inbox');
+      const isInbox = abs === path.join(getDataDir(), INBOX_NAME);
       const type = isInbox ? 'inbox' : 'project';
       const meta = isInbox ? {} : await readProjectMeta(abs);
-      nodes.push({
+      const childKey = toRelPath(abs);
+      const node = {
         name: entry.name,
-        path: toRelPath(abs),
+        path: childKey,
         type,
         meta,
-        children: await scanDir(abs),
-      });
+        children: await scanDir(abs, order, childKey),
+      };
+      if (isInbox) {
+        nodes.push(node);
+      } else {
+        folderNodes.push(node);
+      }
     } else if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== PROJECT_FILE) {
       const meta = await quickMeta(abs);
       nodes.push({
@@ -59,7 +86,15 @@ async function scanDir(dirAbs) {
       });
     }
   }
-  return nodes;
+
+  const sortedFolders = sortFolderNodes(folderNodes, parentKey, order);
+  const inboxNode = nodes.find((n) => n.type === 'inbox');
+  const taskNodes = nodes.filter((n) => n.type === 'task');
+
+  if (parentKey === '' && inboxNode) {
+    return [inboxNode, ...sortedFolders];
+  }
+  return [...sortedFolders, ...taskNodes];
 }
 
 /** Read a project folder's `_project.md` frontmatter (or empty meta). */

@@ -80,10 +80,10 @@ export function ProjectTree({ selectedPath, onSelect }) {
     try {
       if (deleteTarget.type === 'task') {
         await api.deleteItem(deleteTarget.path);
-        pushToast('success', 'تسک به سطل بازیافت منتقل شد.');
+        pushToast('success', 'تسک حذف شد.');
       } else {
         await api.deleteProject(deleteTarget.path);
-        pushToast('success', 'پروژه به سطل بازیافت منتقل شد.');
+        pushToast('success', 'پروژه حذف شد.');
       }
       if (selectedPath === deleteTarget.path || selectedPath?.startsWith(`${deleteTarget.path}/`)) {
         select(null);
@@ -119,6 +119,16 @@ export function ProjectTree({ selectedPath, onSelect }) {
       pushToast('success', 'آیتم منتقل شد.');
     } catch (err) {
       pushToast('error', err.message || 'انتقال ناموفق بود.');
+    }
+  };
+
+  const handleReorderFolder = async ({ parentPath, orderedPaths }) => {
+    try {
+      await api.reorderFolders({ parentPath, orderedPaths });
+      bumpTree();
+      pushToast('success', 'ترتیب پروژه‌ها به‌روز شد.');
+    } catch (err) {
+      pushToast('error', err.message || 'تغییر ترتیب ناموفق بود.');
     }
   };
 
@@ -267,6 +277,8 @@ export function ProjectTree({ selectedPath, onSelect }) {
               key={node.path}
               node={node}
               depth={0}
+              parentPath=""
+              siblingFolders={tree.filter((n) => n.type === 'project').map((n) => n.path)}
               selectedPath={selectedPath}
               onSelect={onSelect}
               onCreateTask={handleCreateTask}
@@ -274,6 +286,7 @@ export function ProjectTree({ selectedPath, onSelect }) {
               onDelete={handleDeleteRequest}
               onRename={handleRename}
               onMove={handleMove}
+              onReorderFolder={handleReorderFolder}
             />
           ))}
         </div>
@@ -298,14 +311,15 @@ export function ProjectTree({ selectedPath, onSelect }) {
         <p className="text-body-sm text-pm-text-secondary">
           {deleteTarget?.type === 'task' ? (
             <>
-              تسک <span className="font-medium text-pm-text-primary">{nodeLabel(deleteTarget)}</span> به
-              سطل بازیافت منتقل می‌شود. پس از ۱۰ روز به‌طور دائم حذف می‌شود.
+              تسک{' '}
+              <span className="font-medium text-pm-text-primary">{nodeLabel(deleteTarget)}</span>{' '}
+              برای همیشه حذف می‌شود و قابل بازیابی نیست.
             </>
           ) : deleteTarget?.type === 'project' ? (
             <>
-              پروژه <span className="font-medium text-pm-text-primary">{nodeLabel(deleteTarget)}</span> و
-              تمام تسک‌ها و زیرپروژه‌هایش به سطل بازیافت منتقل می‌شوند. پس از ۱۰ روز به‌طور دائم حذف
-              می‌شوند.
+              پروژه{' '}
+              <span className="font-medium text-pm-text-primary">{nodeLabel(deleteTarget)}</span> و
+              تمام تسک‌ها و زیرپروژه‌هایش برای همیشه حذف می‌شوند.
             </>
           ) : null}
         </p>

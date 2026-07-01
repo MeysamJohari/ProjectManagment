@@ -6,6 +6,26 @@ import { resolveDataPath, toRelPath, ensureDir } from './paths.js';
 
 const NOW = () => new Date().toISOString();
 
+/** Extract the `## Log` section from a body string (append-only server section). */
+function extractLogSection(body) {
+  if (!body) return '';
+  const m = body.match(/^##\s+Log\b[\s\S]*/m);
+  return m ? m[0].trimEnd() : '';
+}
+
+/** Merge edited body with the preserved Log section from the existing file. */
+function mergeBodyPreservingLog(newBody, existingBody) {
+  // Client sent an explicit Log section — use as-is (user may have edited/deleted lines).
+  if (/^##\s+Log\b/m.test(newBody ?? '')) {
+    return (newBody ?? '').trimEnd();
+  }
+  const logSection = extractLogSection(existingBody);
+  const trimmed = (newBody ?? '').trimEnd();
+  if (!logSection) return trimmed;
+  if (!trimmed) return logSection;
+  return `${trimmed}\n\n${logSection}`;
+}
+
 /** Read & parse a Markdown file. Returns { path, frontmatter, body } or null if missing. */
 export async function readItem(relPath) {
   const abs = resolveDataPath(relPath);
@@ -28,7 +48,7 @@ export async function readItem(relPath) {
  * NOTE: callers must enforce the `is_current` rule and Log appends themselves;
  * this function is a low-level writer.
  */
-export async function writeItem(relPath, frontmatter = {}, body = '') {
+export async function writeItem(relPath, frontmatter = {}, body = undefined) {
   const abs = resolveDataPath(relPath);
   ensureDir(path.dirname(abs));
 
@@ -50,9 +70,11 @@ export async function writeItem(relPath, frontmatter = {}, body = '') {
     merged.created_at = NOW();
   }
 
-  const fileString = matter.stringify(existingBody || body || '', merged);
+  const finalBody =
+    body !== undefined ? mergeBodyPreservingLog(body, existingBody) : existingBody;
+  const fileString = matter.stringify(finalBody || '', merged);
   await fs.writeFile(abs, fileString, 'utf8');
-  return { path: toRelPath(abs), frontmatter: merged, body: existingBody || body || '' };
+  return { path: toRelPath(abs), frontmatter: merged, body: finalBody || '' };
 }
 
 /** Update ONLY the frontmatter, leaving body untouched. Returns the new item. */

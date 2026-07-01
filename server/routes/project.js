@@ -5,7 +5,6 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { resolveDataPath, toRelPath, ensureDir } from '../lib/paths.js';
 import { autoCommit } from '../lib/backup.js';
-import { moveToTrash } from '../lib/trash.js';
 
 export const projectRouter = Router();
 
@@ -77,7 +76,7 @@ projectRouter.post('/project', async (req, res) => {
 });
 
 // ── DELETE /api/project?path=... ────────────────────────────────────────
-// Soft-delete: move the entire project folder to DATA_DIR/.trash/.
+// Permanent delete: remove the entire project folder from disk.
 projectRouter.delete('/project', async (req, res) => {
   const { path: relPath } = req.query;
   if (!relPath) return res.status(400).json({ error: 'Missing "path" query param' });
@@ -99,9 +98,9 @@ projectRouter.delete('/project', async (req, res) => {
       return res.status(400).json({ error: 'Path is not a project folder' });
     }
 
-    const moved = await moveToTrash(abs);
-    autoCommit(`${cleaned} soft-deleted`);
-    res.json({ ok: true, moved });
+    await fs.rm(abs, { recursive: true, force: true });
+    autoCommit(`${cleaned} deleted`);
+    res.json({ ok: true });
   } catch (err) {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[project:delete]', err);

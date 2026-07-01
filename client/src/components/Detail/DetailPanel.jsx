@@ -1,19 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Save, Trash2, FileText } from 'lucide-react';
 import { useItem } from '../../hooks/useItem.js';
 import { useAppStore } from '../../store/useAppStore.js';
+import { buildBodyWithLog, extractLogRawText, stripLogFromBody, appendWorkNoteBlock } from '../../lib/format.js';
+import { api } from '../../api/client.js';
 import { Button } from '../ui/Button.jsx';
 import { Card, CardBody } from '../ui/Card.jsx';
 import { Skeleton, EmptyState, Spinner } from '../ui/Feedback.jsx';
 import { Modal } from '../ui/Modal.jsx';
 import { FrontmatterEditor } from './FrontmatterEditor.jsx';
-import { NoteEditor } from './NoteEditor.jsx';
+import { TaskNotes } from './TaskNotes.jsx';
 import { CurrentFocusToggle } from './CurrentFocusToggle.jsx';
 import { LogTimeline } from './LogTimeline.jsx';
 
 /**
  * Controller panel for the selected item. Composes all the editors and wires
- * up Save (POST /api/item — never touches is_current) and soft-delete.
+ * up Save (POST /api/item — never touches is_current) and permanent delete.
  */
 export function DetailPanel({ path }) {
   const { item, loading, error, reload, save, remove } = useItem(path);
@@ -22,7 +24,8 @@ export function DetailPanel({ path }) {
 
   const [fmDraft, setFmDraft] = useState(null);
   const [fmDirty, setFmDirty] = useState(false);
-  const bodyRef = useRef(null);
+  const [notesDraft, setNotesDraft] = useState(null);
+  const [logDraft, setLogDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -30,7 +33,8 @@ export function DetailPanel({ path }) {
   useEffect(() => {
     setFmDraft(null);
     setFmDirty(false);
-    bodyRef.current = null;
+    setNotesDraft(null);
+    setLogDraft(null);
   }, [path]);
 
   if (!path) {
@@ -92,18 +96,64 @@ export function DetailPanel({ path }) {
     setFmDirty(dirty);
   };
 
-  const handleBodyChange = (val) => {
-    bodyRef.current = val;
+  const handleNotesChange = (val) => {
+    setNotesDraft(val);
+  };
+
+  const handleLogChange = async (val) => {
+    setLogDraft(val);
+    setSaving(true);
+    try {
+      const notes = notesDraft !== null ? notesDraft : stripLogFromBody(item.body);
+      const body = buildBodyWithLog(notes, val);
+      await save({ frontmatter: {}, body });
+      setLogDraft(null);
+      pushToast('success', 'تاریخچه ذخیره شد.');
+    } catch (err) {
+      pushToast('error', err.message || 'ذخیره تاریخچه ناموفق بود.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddWorkEntry = async (text) => {
+    setSaving(true);
+    try {
+      const notes = notesDraft !== null ? notesDraft : stripLogFromBody(item.body);
+      const nextNotes = appendWorkNoteBlock(notes, text);
+
+      const updated = await api.appendLogNote({ path, text });
+      const logRaw = extractLogRawText(updated.body);
+      const body = buildBodyWithLog(nextNotes, logRaw);
+      await save({ frontmatter: {}, body });
+      setNotesDraft(null);
+      setLogDraft(null);
+      pushToast('success', 'کار در تاریخچه و یادداشت ثبت شد.');
+    } catch (err) {
+      pushToast('error', err.message || 'ثبت کار ناموفق بود.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resolvedNotes = notesDraft !== null ? notesDraft : stripLogFromBody(item.body);
+  const resolvedLog = logDraft !== null ? logDraft : extractLogRawText(item.body);
+
+  const isBodyDirty = () => {
+    if (notesDraft !== null && notesDraft !== stripLogFromBody(item.body)) return true;
+    return false;
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const fmToSave = fmDraft && fmDirty ? fmDraft : null;
-      // Always send the body (server replaces it). If untouched, send the
-      // original (minus Log) so we don't clobber it.
-      const body = bodyRef.current !== null ? bodyRef.current : item.body;
+      const notes = notesDraft !== null ? notesDraft : stripLogFromBody(item.body);
+      const logRaw = logDraft !== null ? logDraft : extractLogRawText(item.body);
+      const body = buildBodyWithLog(notes, logRaw);
       await save({ frontmatter: fmToSave || {}, body });
+      setNotesDraft(null);
+      setLogDraft(null);
       setFmDirty(false);
       pushToast('success', 'ذخیره شد.');
     } catch (err) {
@@ -118,13 +168,15 @@ export function DetailPanel({ path }) {
     try {
       await remove();
       useAppStore.getState().bumpTree();
-      pushToast('success', 'تسک به سطل بازیافت منتقل شد.');
+      pushToast('success', 'تسک حذف شد.');
       useAppStore.getState().select(null);
       useAppStore.getState().setView('projects');
     } catch (err) {
       pushToast('error', err.message || 'حذف ناموفق بود.');
     }
   };
+
+  const dirty = fmDirty || isBodyDirty();
 
   return (
     <Card>
@@ -137,7 +189,7 @@ export function DetailPanel({ path }) {
               {fmDraft?.title || item.frontmatter?.title || item.path}
             </h2>
           </div>
-          <CurrentFocusToggle path={path} isCurrent={isCurrent} />
+          <CurrentFocusToggle path={path} isCurrent={isCurrent} onChanged={reload} />
         </div>
 
         {/* Frontmatter */}
@@ -145,16 +197,20 @@ export function DetailPanel({ path }) {
           <FrontmatterEditor frontmatter={item.frontmatter || {}} onChange={handleFmChange} />
         </div>
 
-        {/* Body editor */}
+        {/* Optional static notes */}
         <div className="mb-5 rounded-pm-md border border-pm-border p-4">
-          <p className="mb-1.5 text-label text-pm-text-secondary">بدنه (مارک‌داون)</p>
-          <NoteEditor body={item.body} onChange={handleBodyChange} />
+          <TaskNotes body={item.body} onChange={handleNotesChange} />
         </div>
 
-        {/* Log timeline */}
+        {/* Activity roadmap + editable log */}
         <div className="mb-5 rounded-pm-md border border-pm-border p-4">
-          <p className="mb-2 text-label text-pm-text-secondary">تاریخچه</p>
-          <LogTimeline body={item.body} />
+          <LogTimeline
+            body={item.body}
+            notes={resolvedNotes}
+            logRawText={resolvedLog}
+            onLogChange={handleLogChange}
+            onAddWork={handleAddWorkEntry}
+          />
         </div>
 
         {/* Action bar */}
@@ -163,7 +219,7 @@ export function DetailPanel({ path }) {
             <Trash2 size={16} />
             حذف تسک
           </Button>
-          <Button onClick={handleSave} disabled={saving || (!fmDirty && bodyRef.current === null)}>
+          <Button onClick={handleSave} disabled={saving || !dirty}>
             {saving ? <Spinner size={16} /> : <Save size={16} />}
             ذخیره
           </Button>
@@ -183,7 +239,7 @@ export function DetailPanel({ path }) {
         }
       >
         <p className="text-body-sm text-pm-text-secondary">
-          این تسک به سطل بازیافت منتقل می‌شود و پس از ۱۰ روز به‌طور دائم حذف می‌شود. ادامه می‌دهید؟
+          این تسک برای همیشه حذف می‌شود و قابل بازیابی نیست. ادامه می‌دهید؟
         </p>
       </Modal>
     </Card>

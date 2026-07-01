@@ -6,9 +6,9 @@ import path from 'node:path';
 import matter from 'gray-matter';
 import { readItem, writeItem, appendToLog } from '../lib/files.js';
 import { resolveDataPath, toRelPath } from '../lib/paths.js';
-import { moveToTrash } from '../lib/trash.js';
-import { statusChangeLine } from '../lib/log.js';
+import { statusChangeLine, noteLine } from '../lib/log.js';
 import { autoCommit } from '../lib/backup.js';
+import { setFolderOrder } from '../lib/treeOrder.js';
 
 export const itemRouter = Router();
 
@@ -25,6 +25,31 @@ itemRouter.get('/item', async (req, res) => {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[item:get]', err);
     res.status(500).json({ error: 'Failed to read item', message: err.message });
+  }
+});
+
+// ── POST /api/item/log ──────────────────────────────────────────────────
+// Append a manual work-note line to the task's ## Log section.
+itemRouter.post('/item/log', async (req, res) => {
+  const { path: relPath, text } = req.body || {};
+  if (!relPath) return res.status(400).json({ error: 'Missing "path" in body' });
+  const trimmed = String(text ?? '').trim();
+  if (trimmed.length < 3) {
+    return res.status(400).json({ error: 'Note text is too short (min 3 characters)' });
+  }
+
+  try {
+    if (!existsSync(resolveDataPath(relPath))) {
+      return res.status(404).json({ error: 'Not found', path: relPath });
+    }
+    await appendToLog(relPath, [noteLine(trimmed)]);
+    const item = await readItem(relPath);
+    autoCommit(`${relPath} work logged`);
+    res.json(item);
+  } catch (err) {
+    if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
+    console.error('[item:log]', err);
+    res.status(500).json({ error: 'Failed to append log entry', message: err.message });
   }
 });
 
@@ -62,11 +87,12 @@ itemRouter.post('/item', async (req, res) => {
       newStatus !== undefined && oldStatus !== undefined && newStatus !== oldStatus;
 
     // 1. Write the file (frontmatter merge + body replace).
-    const item = await writeItem(relPath, frontmatter, body);
+    let item = await writeItem(relPath, frontmatter, body);
 
     // 2. If status actually changed, append a Log line.
     if (statusChanged) {
       await appendToLog(relPath, [statusChangeLine(oldStatus, newStatus)]);
+      item = (await readItem(relPath)) || item;
     }
 
     autoCommit(`${toRelPath(abs)} updated`);
@@ -79,7 +105,7 @@ itemRouter.post('/item', async (req, res) => {
 });
 
 // ── DELETE /api/item?path=... ───────────────────────────────────────────
-// Soft-delete: move to DATA_DIR/.trash/{timestamp}-{filename}.
+// Permanent delete: remove the file from disk.
 itemRouter.delete('/item', async (req, res) => {
   const { path: relPath } = req.query;
   if (!relPath) return res.status(400).json({ error: 'Missing "path" query param' });
@@ -88,10 +114,10 @@ itemRouter.delete('/item', async (req, res) => {
     const abs = resolveDataPath(relPath);
     if (!existsSync(abs)) return res.status(404).json({ error: 'Not found', path: relPath });
 
-    const moved = await moveToTrash(abs);
+    await fs.unlink(abs);
 
-    autoCommit(`${relPath} soft-deleted`);
-    res.json({ ok: true, moved });
+    autoCommit(`${relPath} deleted`);
+    res.json({ ok: true });
   } catch (err) {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[item:delete]', err);
@@ -139,5 +165,44 @@ itemRouter.post('/move', async (req, res) => {
     if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
     console.error('[item:move]', err);
     res.status(500).json({ error: 'Failed to move item', message: err.message });
+  }
+});
+
+// ── POST /api/reorder ───────────────────────────────────────────────────
+// Persist sidebar folder order for a parent directory.
+// Body: { parentPath?: string, orderedPaths: string[] }
+itemRouter.post('/reorder', async (req, res) => {
+  const { parentPath = '', orderedPaths } = req.body || {};
+  if (!Array.isArray(orderedPaths) || orderedPaths.length === 0) {
+    return res.status(400).json({ error: 'Missing "orderedPaths" array in body' });
+  }
+
+  try {
+    const parent = String(parentPath || '')
+      .replace(/\\/g, '/')
+      .replace(/^\/+|\/+$/g, '');
+
+    if (parent === '_inbox' || parent.startsWith('_inbox/')) {
+      return res.status(400).json({ error: 'Cannot reorder inside _inbox' });
+    }
+
+    for (const p of orderedPaths) {
+      const cleaned = String(p).replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+      if (cleaned === '_inbox' || cleaned.startsWith('_inbox/')) {
+        return res.status(400).json({ error: 'Cannot reorder _inbox' });
+      }
+      const abs = resolveDataPath(cleaned);
+      if (!existsSync(abs)) {
+        return res.status(404).json({ error: 'Folder not found', path: cleaned });
+      }
+    }
+
+    const saved = await setFolderOrder(parent, orderedPaths);
+    autoCommit(`reordered folders under ${parent || 'root'}`);
+    res.json({ ok: true, order: saved });
+  } catch (err) {
+    if (err.code === 'E_ESCAPE') return res.status(400).json({ error: err.message });
+    console.error('[item:reorder]', err);
+    res.status(500).json({ error: 'Failed to reorder folders', message: err.message });
   }
 });

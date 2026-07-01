@@ -25,14 +25,21 @@ async function bootstrap() {
   ensureDir(dataDir);
   ensureDir(path.join(dataDir, '_inbox'));
 
-  // Seed a couple of example files on the very first run (inbox is empty).
-  const inboxDir = path.join(dataDir, '_inbox');
-  const inboxHasFiles =
-    fs.existsSync(inboxDir) &&
-    fs.readdirSync(inboxDir, { withFileTypes: true }).some((e) => e.isFile());
-  if (!inboxHasFiles) {
-    seedSample(dataDir);
-    console.log('[startup] seeded sample tasks into _inbox/');
+  // Seed sample tasks only once (marker file prevents re-seeding after user deletes them).
+  const seedMarker = path.join(dataDir, '.seed-done');
+  if (!fs.existsSync(seedMarker)) {
+    const inboxDir = path.join(dataDir, '_inbox');
+    const inboxHasFiles =
+      fs.existsSync(inboxDir) &&
+      fs.readdirSync(inboxDir, { withFileTypes: true }).some((e) => e.isFile());
+    const hasProjects = fs
+      .readdirSync(dataDir, { withFileTypes: true })
+      .some((e) => e.isDirectory() && !e.name.startsWith('.') && e.name !== '_inbox');
+    if (!inboxHasFiles && !hasProjects) {
+      seedSample(dataDir);
+      console.log('[startup] seeded sample tasks into _inbox/');
+    }
+    fs.writeFileSync(seedMarker, new Date().toISOString(), 'utf8');
   }
 
   await ensureRepo();

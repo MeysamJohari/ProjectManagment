@@ -11,7 +11,7 @@ import { useAppStore } from '../../store/useAppStore.js';
  * - If ANOTHER task is focused → open PauseNoteModal, then switchFocus({ path, stop_note }).
  * - If THIS task is already focused → show the active state (no action).
  */
-export function CurrentFocusToggle({ path, isCurrent }) {
+export function CurrentFocusToggle({ path, isCurrent, onChanged }) {
   const current = useAppStore((s) => s.current);
   const { switchFocus, switching } = useCurrent();
   const [pauseOpen, setPauseOpen] = useState(false);
@@ -27,6 +27,7 @@ export function CurrentFocusToggle({ path, isCurrent }) {
     // Nothing else is focused → switch directly.
     try {
       await switchFocus({ path });
+      onChanged?.();
     } catch {
       /* toast already shown in hook */
     }
@@ -36,6 +37,7 @@ export function CurrentFocusToggle({ path, isCurrent }) {
     setPauseOpen(false);
     try {
       await switchFocus({ path, stop_note });
+      onChanged?.();
     } catch {
       /* toast already shown */
     }

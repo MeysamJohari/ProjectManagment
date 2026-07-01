@@ -1,0 +1,38 @@
+---
+description: Mandatory — after any code change, update AGENT.md and KNOWN_ISSUES.md before finishing
+alwaysApply: true
+---
+
+# Project memory sync (no exceptions)
+
+`AGENT.md` and `KNOWN_ISSUES.md` are the project's persistent memory. Rules inside them apply to every agent session.
+
+## Gate: do not end the turn without this
+
+If you **created, edited, or deleted** anything under `client/`, `server/`, or root scripts/config that affects behavior:
+
+1. **Update `AGENT.md`** in the same turn:
+   - Section 2: new/changed files, routes, components
+   - Section 3: new contracts or changed rules
+   - Section 6: new test checklist items when relevant
+
+2. **Update `KNOWN_ISSUES.md`** in the same turn when:
+   - A bug was fixed, or
+   - You discovered a root cause worth remembering
+   - Use the template in KNOWN_ISSUES section 0 (Symptom → Root cause → Fix → Lesson)
+
+3. **Mention doc updates** in your final reply (one line: what changed in each file).
+
+## Never defer
+
+- Do not say "I'll update AGENT.md later" or wait for the user to ask.
+- Doc updates belong in the **same response** as the code change.
+
+## Exempt (docs optional)
+
+- Pure formatting / typo with **zero** behavior or API change
+- User explicitly asked question-only (no file edits)
+
+## Templates
+
+Read `AGENT.md` lines 1–13 and `KNOWN_ISSUES.md` section 0 before writing entries.
